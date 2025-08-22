@@ -5,7 +5,7 @@ from datetime import datetime
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Configure logging
+# Configure logging and timestamp the entries
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -26,9 +26,12 @@ class MessageBot:
     
     def init_database(self):
         """Initialize SQLite database to store messages"""
-        # Use absolute path for Railway
+        # Create SQLite database file
+        # Creates a db file in the dir bot.py is in
         db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'messages.db')
+        # Connect to SQLite database
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        # To execute SQL Commands
         cursor = self.conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
@@ -45,6 +48,7 @@ class MessageBot:
     
     def store_message(self, user_id, username, message_text):
         """Store message in database"""
+        # Create a new pointer to insert new messages
         cursor = self.conn.cursor()
         cursor.execute('''
             INSERT INTO messages (user_id, username, message_text, timestamp)
@@ -55,6 +59,7 @@ class MessageBot:
     
     def mark_forwarded(self, message_id):
         """Mark message as forwarded"""
+        # To show msg forwarded 
         cursor = self.conn.cursor()
         cursor.execute('''
             UPDATE messages SET forwarded = TRUE WHERE id = ?
@@ -67,8 +72,14 @@ bot_instance = MessageBot()
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
     await update.message.reply_text(
-        "Hi! Send me any message and I'll forward it to the channel. "
-        "Your identity will be kept anonymous."
+        "Hi! Welcome to ROC Angel & Mortal! If there is any issues with the bot "
+        "Please contact @zhonggruii"
+        "We hope you have fun but here are some rules:"
+        "1. Please make a reasonable challenge i.e nothing dangerous or illegal"
+        "2. Please issue a challenge based on your mortal's tolerance level"
+        "3. Please indicate your mortal @ at the start of the message"
+        "i.e @zhonggruii Please bark 3 times"
+        "If you have doubts about whether your challenge is okay, ask your RA or HH"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -90,7 +101,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         # Format message for channel
-        channel_message = f"📝 Anonymous message #{message_id}:\n\n{message_text}"
+        channel_message = f"Anonymous message #{message_id}:\n\n{message_text}"
         
         # Send to channel
         await context.bot.send_message(
@@ -103,7 +114,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Confirm to user
         await update.message.reply_text(
-            "✅ Your message has been sent to the channel anonymously!"
+            "Your message has been sent to the channel anonymously!"
         )
         
         print(f"Message #{message_id} forwarded successfully")
@@ -111,11 +122,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Error handling message: {e}")
         await update.message.reply_text(
-            "❌ Sorry, there was an error sending your message. Please try again."
+            "Sorry, there was an error sending your message. Please try again."
         )
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show bot statistics"""
+    # Count how many messages sent successfully
     cursor = bot_instance.conn.cursor()
     cursor.execute('SELECT COUNT(*) FROM messages')
     total_messages = cursor.fetchone()[0]
@@ -124,7 +136,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     forwarded_messages = cursor.fetchone()[0]
     
     await update.message.reply_text(
-        f"📊 Bot Statistics:\n"
+        f"Bot Statistics:\n"
         f"Total messages received: {total_messages}\n"
         f"Successfully forwarded: {forwarded_messages}"
     )
