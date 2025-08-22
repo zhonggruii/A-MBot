@@ -1,0 +1,150 @@
+import os
+import logging
+import sqlite3
+from datetime import datetime
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+
+# Configure logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# Configuration 
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL_ID = os.getenv("CHANNEL_ID")
+
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN environment variable is required")
+if not CHANNEL_ID:
+    raise ValueError("CHANNEL_ID environment variable is required")
+
+class MessageBot:
+    def __init__(self):
+        self.init_database()
+    
+    def init_database(self):
+        """Initialize SQLite database to store messages"""
+        # Use absolute path for Railway
+        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'messages.db')
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                username TEXT,
+                message_text TEXT,
+                timestamp DATETIME,
+                forwarded BOOLEAN DEFAULT FALSE
+            )
+        ''')
+        self.conn.commit()
+        print("Database initialized successfully")
+    
+    def store_message(self, user_id, username, message_text):
+        """Store message in database"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT INTO messages (user_id, username, message_text, timestamp)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, username, message_text, datetime.now()))
+        self.conn.commit()
+        return cursor.lastrowid
+    
+    def mark_forwarded(self, message_id):
+        """Mark message as forwarded"""
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            UPDATE messages SET forwarded = TRUE WHERE id = ?
+        ''', (message_id,))
+        self.conn.commit()
+
+# Initialize bot instance
+bot_instance = MessageBot()
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send a message when the command /start is issued."""
+    await update.message.reply_text(
+        "Hi! Send me any message and I'll forward it to the channel. "
+        "Your identity will be kept anonymous."
+    )
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle incoming messages and forward to channel"""
+    try:
+        # Get user info
+        user = update.effective_user
+        message_text = update.message.text
+        
+        if not message_text:
+            await update.message.reply_text("Please send a text message.")
+            return
+        
+        # Store message in database
+        message_id = bot_instance.store_message(
+            user.id, 
+            user.username or "Anonymous", 
+            message_text
+        )
+        
+        # Format message for channel
+        channel_message = f"📝 Anonymous message #{message_id}:\n\n{message_text}"
+        
+        # Send to channel
+        await context.bot.send_message(
+            chat_id=CHANNEL_ID,
+            text=channel_message
+        )
+        
+        # Mark as forwarded
+        bot_instance.mark_forwarded(message_id)
+        
+        # Confirm to user
+        await update.message.reply_text(
+            "✅ Your message has been sent to the channel anonymously!"
+        )
+        
+        print(f"Message #{message_id} forwarded successfully")
+        
+    except Exception as e:
+        logging.error(f"Error handling message: {e}")
+        await update.message.reply_text(
+            "❌ Sorry, there was an error sending your message. Please try again."
+        )
+
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show bot statistics"""
+    cursor = bot_instance.conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM messages')
+    total_messages = cursor.fetchone()[0]
+    
+    cursor.execute('SELECT COUNT(*) FROM messages WHERE forwarded = TRUE')
+    forwarded_messages = cursor.fetchone()[0]
+    
+    await update.message.reply_text(
+        f"📊 Bot Statistics:\n"
+        f"Total messages received: {total_messages}\n"
+        f"Successfully forwarded: {forwarded_messages}"
+    )
+
+def main():
+    """Start the bot"""
+    print(f"Starting bot with token: {BOT_TOKEN[:10]}...")
+    print(f"Channel ID: {CHANNEL_ID}")
+    
+    # Create application
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    # Add handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("stats", stats))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # Start the bot
+    print("Bot is starting...")
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == '__main__':
+    main()
