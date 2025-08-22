@@ -72,13 +72,13 @@ bot_instance = MessageBot()
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
     await update.message.reply_text(
-        "Hi! Welcome to ROC Angel & Mortal! If there is any issues with the bot "
-        "Please contact @zhonggruii"
-        "We hope you have fun but here are some rules:"
-        "1. Please make a reasonable challenge i.e nothing dangerous or illegal"
-        "2. Please issue a challenge based on your mortal's tolerance level"
-        "3. Please indicate your mortal @ at the start of the message"
-        "i.e @zhonggruii Please bark 3 times"
+        "Hi! Welcome to ROC Angel & Mortal! If there is any issues with the bot \n"
+        "Please contact @zhonggruii\n"
+        "We hope you have fun but here are some rules:\n"
+        "1. Please make a reasonable challenge i.e nothing dangerous or illegal\n"
+        "2. Please issue a challenge based on your mortal's tolerance level\n"
+        "3. Please indicate your mortal @ at the start of the message\n"
+        "i.e @zhonggruii Please bark 3 times\n"
         "If you have doubts about whether your challenge is okay, ask your RA or HH"
     )
 
