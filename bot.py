@@ -77,9 +77,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "We hope you have fun but here are some rules:\n"
         "1. Please make a reasonable challenge i.e nothing dangerous or illegal\n"
         "2. Please issue a challenge based on your mortal's tolerance level\n"
-        "3. Please indicate your mortal @ at the start of the message\n"
+        "3. Please be respectful and dont use profanities\n"
+        "4. Please dont spam the bot"
+        "5. Please indicate your mortal @ at the start of the message\n"
         "i.e @zhonggruii Please bark 3 times\n"
-        "If you have doubts about whether your challenge is okay, ask your RA or HH"
+        "If you have doubts about whether your challenge is okay, ask your RA or HH\n\n"
+        "Send a message to get started!"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -101,7 +104,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         # Format message for channel
-        channel_message = f"Anonymous message #{message_id}:\n\n{message_text}"
+        channel_message = f"{message_text}"
         
         # Send to channel
         await context.bot.send_message(
@@ -114,7 +117,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Confirm to user
         await update.message.reply_text(
-            "Your message has been sent to the channel anonymously!"
+            "Your message has been sent to the channel!"
         )
         
         print(f"Message #{message_id} forwarded successfully")
